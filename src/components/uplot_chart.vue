@@ -20,16 +20,48 @@ const props = defineProps({
     type: Number,
     default: 30,
   },
+    showFit: {
+    type: Boolean,
+    default: true,
+  },
 })
 
 const root = ref(null)
 const plot = shallowRef(null)
 let resizeObserver = null
 
+const r2 = ref(null)
+
+function fitLine(x, y) {
+  let n = 0, sx = 0, sy = 0, sxx = 0, sxy = 0, syy = 0
+  for (let i = 0; i < x.length; i++) {
+    if (!Number.isFinite(x[i]) || !Number.isFinite(y[i])) continue
+    n++
+    sx += x[i]
+    sy += y[i]
+    sxx += x[i] * x[i]
+    sxy += x[i] * y[i]
+    syy += y[i] * y[i]
+  }
+  const d = n * sxx - sx * sx
+  if (n < 2 || d === 0) return null
+  const slope = (n * sxy - sx * sy) / d
+  const varY = n * syy - sy * sy
+  const r = varY > 0 ? (n * sxy - sx * sy) / Math.sqrt(d * varY) : 0
+  return { slope, intercept: (sy - slope * sx) / n, r2: r * r }
+}
+
 function normalizedData() {
   const x = Array.isArray(props.data?.[0]) ? props.data[0] : []
   const y = Array.isArray(props.data?.[1]) ? props.data[1] : []
-  return [x, y]
+  if (!props.showFit) {
+    r2.value = null
+    return [x, y]
+  }
+  const f = fitLine(x, y)
+  r2.value = f ? f.r2 : null
+  const fit = f ? x.map((v) => f.slope * v + f.intercept) : x.map(() => null)
+  return [x, y, fit]
 }
 
 function size() {
@@ -123,6 +155,16 @@ function options() {
         points: { show: false },
         spanGaps: true,
       },
+      ...(props.showFit
+        ? [{
+            stroke: 'red',
+            width: 1.5,
+            dash: [6, 4],
+            points: { show: false },
+            spanGaps: true,
+          }]
+        : []),
+    
     ],
   }
 }
@@ -161,7 +203,7 @@ watch(
 )
 
 watch(
-  () => [props.color, props.fill],
+  () => [props.color, props.fill, props.showFit],
   () => {
     if (!plot.value) return
     plot.value.destroy()
@@ -185,13 +227,32 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div ref="root" class="uplot-chart" />
+  <div class="uplot-wrap">
+    <div ref="root" class="uplot-chart" />
+    <span v-if="showFit && r2 !== null" class="fit-r2">R² {{ r2.toFixed(3) }}</span>
+  </div>
 </template>
 
 <style scoped>
+.uplot-wrap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
 .uplot-chart {
   width: 100%;
   height: 100%;
+}
+
+.fit-r2 {
+  position: absolute;
+  top: 4px;
+  right: 18px;
+  z-index: 2;
+  font-size: 10px;
+  color: red;
+  pointer-events: none;
 }
 
 .uplot-chart :deep(.uplot) {
