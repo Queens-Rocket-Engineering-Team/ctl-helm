@@ -251,7 +251,7 @@ onBeforeUnmount(() => {
   right: 18px;
   z-index: 2;
   font-size: 10px;
-  color: red;
+  color: rgb(0, 38, 255)e;
   pointer-events: none;
 }
 
