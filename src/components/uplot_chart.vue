@@ -31,6 +31,7 @@ const plot = shallowRef(null)
 let resizeObserver = null
 
 const r2 = ref(null)
+const eq = ref(null)
 
 function fitLine(x, y) {
   let n = 0, sx = 0, sy = 0, sxx = 0, sxy = 0, syy = 0
@@ -56,10 +57,12 @@ function normalizedData() {
   const y = Array.isArray(props.data?.[1]) ? props.data[1] : []
   if (!props.showFit) {
     r2.value = null
+    eq.value = null
     return [x, y]
   }
   const f = fitLine(x, y)
   r2.value = f ? f.r2 : null
+  eq.value = f ? { slope: f.slope, intercept: f.intercept } : null
   const fit = f ? x.map((v) => f.slope * v + f.intercept) : x.map(() => null)
   return [x, y, fit]
 }
@@ -229,7 +232,10 @@ onBeforeUnmount(() => {
 <template>
   <div class="uplot-wrap">
     <div ref="root" class="uplot-chart" />
-    <span v-if="showFit && r2 !== null" class="fit-r2">R² {{ r2.toFixed(3) }}</span>
+    <span v-if="showFit && r2 !== null && eq" class="fit-r2">
+      y = {{ eq.slope.toFixed(3) }}x {{ eq.intercept < 0 ? '−' : '+' }} {{ Math.abs(eq.intercept).toFixed(2) }}
+      &nbsp;·&nbsp; R² {{ r2.toFixed(3) }}
+    </span>
   </div>
 </template>
 
